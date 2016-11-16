@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
--- import Example
--- main = runExample
 
+-- import Example -- Question 1
 import Shapes
 
 import Text.Blaze.Svg11 ((!), mkPath, l, m)
@@ -11,6 +10,13 @@ import qualified Text.Blaze.Svg11.Attributes as A
 import Text.Blaze.Svg.Renderer.String (renderSvg)
 
 import Web.Scotty
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as HA
+import qualified Text.Blaze.Html.Renderer.Text as R
+import Data.Text.Lazy (Text, pack, unpack)
+import Control.Exception
+
+import qualified Language.Haskell.Interpreter as HSK
 
 red :: Color
 red = color "ff0000"
@@ -18,28 +24,74 @@ green :: Color
 green = color "00ff00"
 blue :: Color
 blue = color "0000ff"
+
 borderWidth :: OutlineWidth
 borderWidth = outlinewidth 0.1
 
 blueAndRedBox :: StyleSheet
 blueAndRedBox = stylesheet blue red borderWidth
+greenAndRedBox :: StyleSheet
+greenAndRedBox = stylesheet green red borderWidth
 
 ballS :: (Transform, Shape, StyleSheet)
 ballS =  ( scale (point 0.7 0.7), circle, blueAndRedBox)
-
 squareS :: (Transform, Shape, StyleSheet)
-squareS =  (scale (point 2 2) <+> translate (point 1.2 0.4) <+> rotate 0.39269908169872414, square, blueAndRedBox)
+squareS =  (scale (point 2 2) <+> translate (point 1.2 0.4) <+> rotate 0.39269908169872414, square, greenAndRedBox)
 
 theShapes :: Drawing 
 theShapes = [ballS, squareS]
 
 main = do
-  let a = renderSvg svgDoc
-  putStrLn a
-  -- scotty 3000 $ do
-  --   get "/" $ do
-  --     html "Hello World!"
+  -- runExample                  -- Question 1
+  -- putStrLn svgDoc theShapes   -- Question 2
+  -- Question 3 :
+  example <- readFile "sample.shapes"
+  scotty 3000 $ do
+    get "/" $ do
+      html $ home example
+    post "/" $ do
+      theShapesString <- (param "haskell_DSL") `rescue` (\msg -> return $ mconcat ["Error while processing POST request : ", msg])
+      let theShapes :: Drawing
+          theShapes = read (unpack theShapesString)
+      html $ generateSVG example theShapes
 
-svgDoc :: S.Svg
-svgDoc = S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" ! A.viewbox "0 0 10 10" $ do
+home :: String -> Text 
+home example = do
+  R.renderHtml $ do
+    renderHomePage example
+
+generateSVG :: String -> Drawing -> Text 
+generateSVG example theShapes = do
+  R.renderHtml $ do
+    renderHomePage example
+    H.h2 "Here is your SVG:"
+    let svg = renderSvg $ svgDoc theShapes
+    H.div (H.preEscapedToMarkup svg)
+
+renderHomePage :: String -> H.Html
+renderHomePage example = do
+  H.head $ H.title "Home Page | Haskell2SVG"
+  H.body $ do
+    H.h1 "Welcome to Haskell2SVG!"
+    H.p "Welcome, using the following form, you can get a SVG representation of your shapes. Try with the default example ;)"
+    H.p $ do
+      H.p "Note that the shapes are represented as String instances. Here is the representation :"
+      H.ul $ do
+      	H.li "Drawing = [TransformedShape, TransformedShape, ...]"
+      	H.li "TransformedShape = (Transform, Shape, StyleSheet)"
+      	H.li "Transform = (Compose(Transform Transform)) | (Scale (Vector)) | (Translate (Vector))) | (Rotate (Vector) (Vector)) "
+      	H.li "Vector = (xDouble yDouble) "
+      	H.li "Shape = (Empty) | (Square) | (Circle) "
+      	H.li "StyleSheet = (Color insideInHexa) (Color borderInHexa) (OutlineWidth borderWidthDouble)) "
+    H.p $ do 
+      H.form (generateForm example) H.! HA.method "POST"
+
+generateForm :: String -> H.Html
+generateForm example = do
+  H.label "Your shapes" H.! HA.for "haskell_DSL" >> H.br
+  H.textarea (H.toMarkup example) H.! HA.name "haskell_DSL" H.! HA.cols "180" H.! HA.rows "5" >> H.br
+  H.input H.! HA.type_ "submit" H.! HA.value "Get SVG!"
+
+svgDoc :: Drawing -> S.Svg
+svgDoc theShapes = S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" ! A.viewbox "0 0 10 10" $ do
     foldr1 (>>) (map renderShapeToSVG theShapes)

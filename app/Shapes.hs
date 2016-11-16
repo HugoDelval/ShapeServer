@@ -14,7 +14,7 @@ import Data.List
 -- Utilities
 
 data Vector = Vector Double Double
-              deriving Show
+              deriving (Read, Show)
 vector = Vector
 
 cross :: Vector -> Vector -> Double
@@ -32,7 +32,7 @@ vectAdd (Vector x1 y1) (Vector x2 y2) = vector (x1+x2) (y1+y2)
         
 -- 2x2 square matrices are all we need.
 data Matrix = Matrix Vector Vector
-              deriving Show
+              deriving (Read, Show)
 
 matrix :: Double -> Double -> Double -> Double -> Matrix
 matrix a b c d = Matrix (Vector a b) (Vector c d)
@@ -60,7 +60,7 @@ point = vector
 data Shape = Empty 
            | Circle 
            | Square
-             deriving Show
+             deriving (Read, Show)
 
 empty, circle, square :: Shape
 
@@ -75,7 +75,7 @@ data Transform = Identity
            | Scale Vector
            | Compose Transform Transform
            | Rotate Matrix
-             deriving Show
+             deriving (Read, Show)
 
 identity = Identity
 translate = Translate
@@ -118,13 +118,13 @@ testShape = (scale (point 10 10), circle)
 
 -- Stylesheet
 
-data Color = Color String
+data Color = Color String deriving (Read, Show)
 color = Color
 
-data OutlineWidth = OutlineWidth Double
+data OutlineWidth = OutlineWidth Double deriving (Read, Show)
 outlinewidth = OutlineWidth
 
-data StyleSheet = StyleSheet Color Color OutlineWidth
+data StyleSheet = StyleSheet Color Color OutlineWidth deriving (Read, Show)
 stylesheet = StyleSheet
 
 insideShapeMinusBorder :: Point -> (Shape, Double) -> Bool

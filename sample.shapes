@@ -1,0 +1,1 @@
+[(Scale (Vector 0.7 0.7),Circle,StyleSheet (Color "0000ff") (Color "ff0000") (OutlineWidth 0.1)),(Compose (Compose (Scale (Vector 2.0 2.0)) (Translate (Vector 1.2 0.4))) (Rotate (Matrix (Vector 0.9238795325112867 (-0.3826834323650898)) (Vector 0.3826834323650898 0.9238795325112867))),Square,StyleSheet (Color "00ff00") (Color "ff0000") (OutlineWidth 0.1))]
