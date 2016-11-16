@@ -8,6 +8,7 @@ import Text.Blaze.Svg11 ((!), mkPath, l, m)
 import qualified Text.Blaze.Svg11 as S
 import qualified Text.Blaze.Svg11.Attributes as A
 import Text.Blaze.Svg.Renderer.String (renderSvg)
+import Data.List
 
 import Web.Scotty
 import qualified Text.Blaze.Html5 as H
@@ -92,6 +93,37 @@ generateForm example = do
   H.textarea (H.toMarkup example) H.! HA.name "haskell_DSL" H.! HA.cols "180" H.! HA.rows "5" >> H.br
   H.input H.! HA.type_ "submit" H.! HA.value "Get SVG!"
 
+
+-- SVG
+
 svgDoc :: Drawing -> S.Svg
 svgDoc theShapes = S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" ! A.viewbox "0 0 10 10" $ do
     foldr1 (>>) (map renderShapeToSVG theShapes)
+
+renderShapeToSVG :: (Transform, Shape, StyleSheet) -> S.Svg
+renderShapeToSVG (t, s, ss) = S.g ! A.transform (S.translate 5 5) $ do
+  S.g ! A.transform (mconcat (makeTransform t)) $ do
+    renderShape s ss
+
+makeTransform :: Transform -> [S.AttributeValue]
+makeTransform transform 
+  | isIdentity transform = []
+  | isCompose transform = makeTransform (get1stComposed transform) ++ makeTransform (get2ndComposed transform)
+  | isTranslate transform = [S.translate (getXTranslate transform) (getYTranslate transform)]
+  | isScale transform = [S.scale (getXScale transform) (getYScale transform)]
+  | isRotate transform = [S.translate 0.5 0.5, S.rotate (getAngleRotate transform), S.translate (-0.5) (-0.5)]
+
+renderShape :: Shape -> StyleSheet -> S.Svg
+renderShape shape stylesheet
+  | isEmpty shape = S.rect ! A.width "0" ! A.height "0"
+  | isSquare shape = do
+      S.rect ! A.width "1" ! A.height "1" ! 
+        A.fill (S.stringValue ("#" ++ insideColor)) ! 
+        A.stroke (S.stringValue ("#" ++ borderColor)) ! A.strokeWidth (S.stringValue borderWidth)
+  | isCircle shape = do
+      S.circle ! A.r "0.5" !
+        A.fill (S.stringValue ("#" ++ insideColor)) ! 
+        A.stroke (S.stringValue ("#" ++ borderColor)) ! A.strokeWidth (S.stringValue borderWidth)
+  where insideColor = getInsideColor stylesheet
+        borderColor = getBorderColor stylesheet
+        borderWidth = getBorderWidth stylesheet

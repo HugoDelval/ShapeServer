@@ -2,14 +2,10 @@
 module Shapes(
   Shape, Point, Vector, Transform, Drawing, StyleSheet, Color, OutlineWidth,
   point, getX, getY, color, outlinewidth, stylesheet, 
-  empty, circle, square, getColor, stringFromColor, renderShapeToSVG,
+  empty, circle, square, getColor, stringFromColor,
+  isIdentity, isCompose, isTranslate, isScale, isRotate, get1stComposed, get2ndComposed, getXTranslate, getYTranslate, getXScale, getYScale, getAngleRotate, getInsideColor, getBorderColor, getBorderWidth, isEmpty, isSquare, isCircle,
   identity, translate, rotate, scale, (<+>),
   inside)  where
-
-import qualified Text.Blaze.Svg11 as S
-import qualified Text.Blaze.Svg11.Attributes as A
-import Text.Blaze.Svg11 ((!))
-import Data.List
 
 -- Utilities
 
@@ -68,6 +64,18 @@ empty = Empty
 circle = Circle
 square = Square
 
+isEmpty :: Shape -> Bool
+isEmpty (Empty) = True
+isEmpty _ = False
+
+isSquare :: Shape -> Bool
+isSquare (Square) = True
+isSquare _ = False
+
+isCircle :: Shape -> Bool
+isCircle (Circle) = True
+isCircle _ = False
+
 -- Transformations
 
 data Transform = Identity
@@ -89,6 +97,47 @@ transform (Translate (Vector tx ty)) (Vector px py)  = Vector (px - tx) (py - ty
 transform (Scale (Vector tx ty))     (Vector px py)  = Vector (px / tx)  (py / ty)
 transform (Rotate m)                 p = (invert m) `mult` p
 transform (Compose t1 t2)            p = transform t2 $ transform t1 p
+
+isIdentity :: Transform -> Bool
+isIdentity (Identity) = True
+isIdentity _ = False
+
+isCompose :: Transform -> Bool
+isCompose (Compose _ _) = True
+isCompose _ = False
+
+isTranslate :: Transform -> Bool
+isTranslate (Translate _) = True
+isTranslate _ = False
+
+isScale :: Transform -> Bool
+isScale (Scale _) = True
+isScale _ = False
+
+isRotate :: Transform -> Bool
+isRotate (Rotate _) = True
+isRotate _ = False
+
+get1stComposed :: Transform -> Transform
+get1stComposed (Compose t1 t2) = t1
+
+get2ndComposed :: Transform -> Transform
+get2ndComposed (Compose t1 t2) = t2
+
+getXTranslate :: Transform -> Double
+getXTranslate (Translate (Vector x y)) = x
+
+getYTranslate :: Transform -> Double
+getYTranslate (Translate (Vector x y)) = y
+
+getXScale :: Transform -> Double
+getXScale (Scale (Vector x y)) = x
+
+getYScale :: Transform -> Double
+getYScale (Scale (Vector x y)) = y
+
+getAngleRotate :: Transform -> Double
+getAngleRotate (Rotate (Matrix (Vector tx1 _) (Vector tx2 _))) = getAngle tx1 tx2
 
 -- Drawings
 
@@ -147,29 +196,12 @@ getColorS p (t, s, (StyleSheet insideColor borderColor (OutlineWidth borderWidth
 stringFromColor :: Color -> String
 stringFromColor (Color c) = c
 
+getInsideColor :: StyleSheet -> String
+getInsideColor (StyleSheet insideColor borderColor (OutlineWidth borderWidth)) = stringFromColor insideColor
 
--- SVG
+getBorderColor :: StyleSheet -> String
+getBorderColor (StyleSheet insideColor borderColor (OutlineWidth borderWidth)) = stringFromColor borderColor
 
-renderShapeToSVG :: (Transform, Shape, StyleSheet) -> S.Svg
-renderShapeToSVG (t, s, ss) = S.g ! A.transform (S.translate 5 5) $ do
-  S.g ! A.transform (mconcat (makeTransform t)) $ do
-    renderShape s ss
-
-renderShape :: Shape -> StyleSheet -> S.Svg
-renderShape (Empty) _ = S.rect ! A.width "0" ! A.height "0"
-renderShape (Square) (StyleSheet (Color insideColor) (Color borderColor) (OutlineWidth borderWidth)) = do
-  S.rect ! A.width "1" ! A.height "1" ! 
-    A.fill (S.stringValue ("#" ++ insideColor)) ! 
-    A.stroke (S.stringValue ("#" ++ borderColor)) ! A.strokeWidth (S.stringValue (show (borderWidth)))
-renderShape (Circle) (StyleSheet (Color insideColor) (Color borderColor) (OutlineWidth borderWidth)) = do
-  S.circle ! A.r "0.5" !
-    A.fill (S.stringValue ("#" ++ insideColor)) ! 
-    A.stroke (S.stringValue ("#" ++ borderColor)) ! A.strokeWidth (S.stringValue (show (borderWidth)))
-
-makeTransform :: Transform -> [S.AttributeValue]
-makeTransform (Identity) = []
-makeTransform (Compose t1 t2) = makeTransform t1 ++ makeTransform t2
-makeTransform (Translate (Vector tx ty)) = [S.translate tx ty]
-makeTransform (Scale (Vector tx ty)) = [S.scale tx ty]
-makeTransform (Rotate (Matrix (Vector tx1 ty1) (Vector tx2 ty2))) = [S.translate 0.5 0.5, S.rotate (getAngle tx1 tx2), S.translate (-0.5) (-0.5)]
+getBorderWidth :: StyleSheet -> String
+getBorderWidth (StyleSheet insideColor borderColor (OutlineWidth borderWidth)) = show borderWidth
 
